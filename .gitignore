@@ -202,3 +202,5 @@ model_ckpt/
 
 /home/mohammad/Mohammad_ws/autonomous_driving/e2etransfuser/leaderboard/scripts/run_evaluation2.sh
 /home/mohammad/Mohammad_ws/autonomous_driving/e2etransfuser/leaderboard/team_code/transfuser_pami_agent.py
+transfuser_pami/carla
+transfuser_pami/team_code_transfuser/cuda_10.2.89_440.33.01_linux.run
