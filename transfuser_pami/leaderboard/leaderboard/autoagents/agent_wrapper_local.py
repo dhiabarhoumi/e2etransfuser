@@ -92,6 +92,7 @@ class AgentWrapper(object):
         bp_library = CarlaDataProvider.get_world().get_blueprint_library()
         for sensor_spec in self._agent.sensors():
             # These are the pseudosensors (not spawned)
+            print(f"DEBUG: sensor_spec = {sensor_spec}")
             if sensor_spec['type'].startswith('sensor.opendrive_map'):
                 # The HDMap pseudo sensor is created directly here
                 sensor = OpenDriveMapReader(vehicle, sensor_spec['reading_frequency'])
@@ -208,6 +209,7 @@ class AgentWrapper(object):
         for sensor in sensors:
 
             # Check if the is has been already used
+            print(f"DEBUG: sensor = {sensor}")
             sensor_id = sensor['id']
             if sensor_id in sensor_ids:
                 raise SensorConfigurationInvalid("Duplicated sensor tag [{}]".format(sensor_id))

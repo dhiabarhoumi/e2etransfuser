@@ -16,7 +16,7 @@ class GlobalConfig:
     pixels_per_meter = 8.0 # How many pixels make up 1 meter. 1 / pixels_per_meter = size of pixel in meters
     lidar_pos = [1.3,0.0,2.5] # x, y, z mounting position of the LiDAR
     lidar_rot = [0.0, 0.0, -90.0] # Roll Pitch Yaw of LiDAR in degree
-
+    img_width_cut = 100
     camera_pos = [1.3, 0.0, 1.8] # 2.3 x, y, z mounting position of the camera
     camera_width = 960 # Camera width in pixel
     camera_height = 480 # Camera height in pixel
@@ -32,7 +32,7 @@ class GlobalConfig:
     augment = True
     inv_augment_prob = 0.1 # Probablity that data augmentation is applied is 1.0 - inv_augment_prob
     aug_max_rotation = 20 # degree
-    debug = False # If true the model in and outputs will be visualized and saved into Os variable Save_Path
+    debug = True # If true the model in and outputs will be visualized and saved into Os variable Save_Path
     sync_batch_norm = False # If this is true we convert the batch norms, to synced bach norms.
     train_debug_save_freq = 50 # At which interval to save debug files to disk during training
 

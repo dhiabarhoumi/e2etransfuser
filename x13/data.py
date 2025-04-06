@@ -73,7 +73,18 @@ class CARLA_Data(Dataset):
                     # print(scenario_dir)
                     # subtract final frames (pred_len) since there are no future waypoints
                     # first frame of sequence not used
-                    num_seq = (len(os.listdir(scenario_dir+"/rgb/"))-self.pred_len-2)//self.seq_len
+                    rgb_dir = scenario_dir + "/rgb/"
+                    print(f"Checking RGB directory: {rgb_dir}")
+                    if not os.path.exists(rgb_dir):
+                        print(f"Directory does not exist: {rgb_dir}")
+                    rgb_dir = os.path.join(scenario_dir, "rgb")  # Correct path without `label_raw`
+                    if not os.path.exists(rgb_dir):
+                        print(f"Directory does not exist: {rgb_dir}")
+                        continue  # Skip this scenario if the `rgb` folder is missing
+
+                    num_seq = (len(os.listdir(rgb_dir)) - self.pred_len - 2) // self.seq_len
+                    print(f"Number of sequences for {scenario_dir}: {num_seq}")
+                    #num_seq = (len(os.listdir(scenario_dir+"/rgb/"))-self.pred_len-2)//self.seq_len
                     for seq in range(num_seq):
                         fronts = []
                         # lefts = []

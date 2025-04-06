@@ -51,8 +51,30 @@ class CARLA_Data(Dataset):
             routes = [folder for folder in root_files if not os.path.isfile(os.path.join(sub_root,folder))]
             for route in routes:
                 route_dir = sub_root / route
-                num_seq = len(os.listdir(route_dir / "lidar"))
 
+                try:
+                # Check if "lidar" directory exists
+                    lidar_dir = route_dir / "lidar"
+                    if not lidar_dir.is_dir():
+                        print(f"Skipping invalid route (no lidar dir): {route_dir}")
+                        continue  # Skip this route
+
+                # Count LiDAR files
+                    num_seq = len(os.listdir(lidar_dir))
+                    if num_seq == 0:
+                        print(f"Skipping empty route: {route_dir}")
+                        continue  # Skip if no files
+
+                # Proceed to load data only if all required directories exist
+                    required_dirs = ["rgb", "depth", "semantics", "measurements", "label_raw"]
+                    missing_dirs = [d for d in required_dirs if not (route_dir / d).is_dir()]
+                    if missing_dirs:
+                        print(f"Skipping route {route_dir}: Missing {missing_dirs}")
+                        continue
+                    num_seq = len(os.listdir(route_dir / "lidar"))
+                except Exception as e:
+                    print(f"Error processing route {route_dir}: {str(e)}")
+                    continue  # Skip on any error
                 # ignore the first two and last two frame
                 for seq in range(2, num_seq - self.pred_len - self.seq_len - 2):
                     # load input seq and pred seq jointly
@@ -129,6 +151,7 @@ class CARLA_Data(Dataset):
 
         # Because the strings are stored as numpy byte objects we need to convert them back to utf-8 strings
         # Since we also load labels for future timesteps, we load and store them separately
+        
         for i in range(self.seq_len+self.pred_len):
             if ((not (self.data_cache is None)) and (str(labels[i], encoding='utf-8') in self.data_cache)):
                     labels_i = self.data_cache[str(labels[i], encoding='utf-8')]

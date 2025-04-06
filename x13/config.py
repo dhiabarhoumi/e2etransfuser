@@ -25,8 +25,8 @@ class GlobalConfig:
     pred_len = 3 # future waypoints predicted
 
     #root_dir = '/home/mohammad/Mohammad_ws/autonomous_driving/transfuser/data'  # for the PMLR dataset
-    root_dir = '/localhome/pagand/projects/e2etransfuser/transfuser_pami/traindata'
-
+    root_dir = '/media/ros/hdd2/Porjects/e2etransfuser/transfuser_pami/data/coke_dataset_23_11'
+    
     train_data, val_data = [], []
 
     ## For PMLR dataset

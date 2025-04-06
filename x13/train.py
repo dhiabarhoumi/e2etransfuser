@@ -325,7 +325,7 @@ def main():
 	#OPTIMIZER
 	optima = optim.AdamW(model.parameters(), lr=config.lr, weight_decay=config.weight_decay)
 	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optima, mode='min', factor=0.5, patience=3, min_lr=1e-6)
-
+	print("Train Data Path:", config.train_data)
 	#BUAT DATA BATCH
 	train_set = CARLA_Data(root=config.train_data, config=config)
 	val_set = CARLA_Data(root=config.val_data, config=config)

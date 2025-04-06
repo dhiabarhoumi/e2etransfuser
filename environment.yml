@@ -1,4 +1,4 @@
-name: tfuse
+name: tfuse_new
 channels:
   - defaults
 dependencies:

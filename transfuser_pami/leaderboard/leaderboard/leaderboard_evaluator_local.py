@@ -34,6 +34,8 @@ from leaderboard.envs.sensor_interface import SensorConfigurationInvalid
 from leaderboard.autoagents.agent_wrapper_local import  AgentWrapper, AgentError
 from leaderboard.utils.statistics_manager_local import StatisticsManager
 from leaderboard.utils.route_indexer import RouteIndexer
+import os
+os.environ["PYTORCH_CUDA_ALLOC_CONF"] = "max_split_size_mb:128"
 
 
 sensors_to_icons = {
@@ -84,10 +86,10 @@ class LeaderboardEvaluator(object):
         self.world = self.client.load_world('Town01')
         self.traffic_manager = self.client.get_trafficmanager(int(args.trafficManagerPort))
 
-        dist = pkg_resources.get_distribution("carla")
-        if dist.version != 'leaderboard':
-            if LooseVersion(dist.version) < LooseVersion('0.9.10'):
-                raise ImportError("CARLA version 0.9.10.1 or newer required. CARLA version found: {}".format(dist))
+        #dist = pkg_resources.get_distribution("carla")
+        #if dist.version != 'leaderboard':
+         #   if LooseVersion(dist.version) < LooseVersion('0.9.10'):
+           #     raise ImportError("CARLA version 0.9.10.1 or newer required. CARLA version found: {}".format(dist))
 
         # Load agent
         module_name = os.path.basename(args.agent).split('.')[0]

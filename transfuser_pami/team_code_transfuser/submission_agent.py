@@ -1,13 +1,14 @@
 import os
 import json
 from copy import deepcopy
-
+import pygame
 import cv2
 import carla
 from PIL import Image
 from collections import deque
 
 import torch
+torch.cuda.empty_cache()
 import numpy as np
 import math
 
@@ -82,21 +83,44 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
 
 
         # Load model files
+        #self.nets = []
+        #self.model_count = 0 # Counts how many models are in our ensemble
+       # for file in os.listdir(path_to_conf_file):
+        #    if file.endswith(".pth"):
+         #       self.model_count += 1
+          #      print(os.path.join(path_to_conf_file, file))
+           #     net = LidarCenterNet(self.config, 'cuda', self.backbone, image_architecture, lidar_architecture, use_velocity)
+            #    if(self.config.sync_batch_norm == True):
+             #       net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net) # Model was trained with Sync. Batch Norm. Need to convert it otherwise parameters will load incorrectly.
+              #  state_dict = torch.load(os.path.join(path_to_conf_file, file), map_location='cuda:0')
+               # #state_dict = torch.load(os.path.join(path_to_conf_file, file), map_location='cpu')
+                #state_dict = {k[7:]: v for k, v in state_dict.items()} # Removes the .module coming from the Distributed Training. Remove this if you want to evaluate a model trained without DDP.
+                #net.load_state_dict(state_dict, strict=False)
+            #    net.cuda()
+             #   net.eval()
+              #  self.nets.append(net)
         self.nets = []
-        self.model_count = 0 # Counts how many models are in our ensemble
-        for file in os.listdir(path_to_conf_file):
-            if file.endswith(".pth"):
-                self.model_count += 1
-                print(os.path.join(path_to_conf_file, file))
-                net = LidarCenterNet(self.config, 'cuda', self.backbone, image_architecture, lidar_architecture, use_velocity)
-                if(self.config.sync_batch_norm == True):
-                    net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net) # Model was trained with Sync. Batch Norm. Need to convert it otherwise parameters will load incorrectly.
-                state_dict = torch.load(os.path.join(path_to_conf_file, file), map_location='cuda:0')
-                state_dict = {k[7:]: v for k, v in state_dict.items()} # Removes the .module coming from the Distributed Training. Remove this if you want to evaluate a model trained without DDP.
-                net.load_state_dict(state_dict, strict=False)
-                net.cuda()
-                net.eval()
-                self.nets.append(net)
+        self.model_count = 0  # Counts how many models are in our ensemble
+
+        model_files = [file for file in os.listdir(path_to_conf_file) if file.endswith(".pth")]
+
+        if len(model_files) > 0:
+            file = model_files[0]  # Load only the first model for now
+            self.model_count = 1
+            print(os.path.join(path_to_conf_file, file))
+            net = LidarCenterNet(self.config, 'cuda', self.backbone, image_architecture, lidar_architecture, use_velocity)
+
+            if self.config.sync_batch_norm:
+                net = torch.nn.SyncBatchNorm.convert_sync_batchnorm(net)
+
+            state_dict = torch.load(os.path.join(path_to_conf_file, file), map_location='cuda:0')
+            state_dict = {k[7:]: v for k, v in state_dict.items()}  # Remove '.module' prefix
+            net.load_state_dict(state_dict, strict=False)
+            net.cuda()
+            net.eval()
+            self.nets.append(net)
+
+
 
 
         self.stuck_detector = 0
@@ -106,6 +130,12 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
         self.aug_degrees = [0] # Test time data augmentation. Unused we only augment by 0 degree.
         self.steer_damping = self.config.steer_damping
         self.rgb_back = None #For debugging
+        pygame.init()
+        pygame.font.init()
+        self._width = 800
+        self._height = 600
+        self._display = pygame.display.set_mode((self._width, self._height), pygame.HWSURFACE | pygame.DOUBLEBUF)
+        pygame.display.set_caption("Agent View")
 
 
 
@@ -126,47 +156,47 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
 			'type': 'sensor.camera.rgb',
     			'x': 1.3, 'y': 0.0, 'z':2.3,
 			'roll': 0.0, 'pitch': 0.0, 'yaw': 0.0,
-			'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.fov,
+			'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
 			'id': 'rgb_front'
 			},
 		{
 	 		'type': 'sensor.camera.rgb',
 		 	'x': 1.3, 'y': 0.0, 'z': 2.3,
 		 	'roll': 0.0, 'pitch': 0.0, 'yaw': -60.0,
-		 	'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.fov,
+		 	'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
 		 	'id': 'rgb_left'
 		 	},
 		{
 		 	'type': 'sensor.camera.rgb',
 		 	'x': 1.3, 'y': 0.0, 'z':2.3,
 		 	'roll': 0.0, 'pitch': 0.0, 'yaw': 60.0,
-		 	'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.fov,
+		 	'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
 		 	'id': 'rgb_right'
 		 	},	
 		 	
-			""" 	
-                    {
-                        'type': 'sensor.camera.rgb',
-                        'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
-                        'roll': self.config.camera_rot_0[0], 'pitch': self.config.camera_rot_0[1], 'yaw': self.config.camera_rot_0[2],
-                        'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
-                        'id': 'rgb_front'
-                        },
-                    {
-                        'type': 'sensor.camera.rgb',
-                        'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
-                        'roll': self.config.camera_rot_1[0], 'pitch': self.config.camera_rot_1[1], 'yaw': self.config.camera_rot_1[2],
-                        'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
-                        'id': 'rgb_left'
-                        },
-                    {
-                        'type': 'sensor.camera.rgb',
-                        'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
-                        'roll': self.config.camera_rot_2[0], 'pitch': self.config.camera_rot_2[1], 'yaw': self.config.camera_rot_2[2],
-                        'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
-                        'id': 'rgb_right'
-                        },
-                        """
+				
+            #        {
+             #           'type': 'sensor.camera.rgb',
+              #          'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
+               #         'roll': self.config.camera_rot_0[0], 'pitch': self.config.camera_rot_0[1], 'yaw': self.config.camera_rot_0[2],
+                #        'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
+                 #       'id': 'rgb_front'
+                  #      },
+                   # {
+                    #    'type': 'sensor.camera.rgb',
+                     #   'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
+                      #  'roll': self.config.camera_rot_1[0], 'pitch': self.config.camera_rot_1[1], 'yaw': self.config.camera_rot_1[2],
+                       # 'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
+                       # 'id': 'rgb_left'
+                       # },
+                   # {
+                    #    'type': 'sensor.camera.rgb',
+                     #   'x': self.config.camera_pos[0], 'y': self.config.camera_pos[1], 'z':self.config.camera_pos[2],
+                      #  'roll': self.config.camera_rot_2[0], 'pitch': self.config.camera_rot_2[1], 'yaw': self.config.camera_rot_2[2],
+                       # 'width': self.config.camera_width, 'height': self.config.camera_height, 'fov': self.config.camera_fov,
+                        #'id': 'rgb_right'
+                       # },
+            
                     {
                         'type': 'sensor.other.imu',
                         'x': 0.0, 'y': 0.0, 'z': 0.0,
@@ -207,13 +237,27 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
         return sensors
 
     def tick(self, input_data):
-        rgb = []
+        #rgb = []
+        #for pos in ['left', 'front', 'right']:
+         #   rgb_cam = 'rgb_' + pos
+          #  rgb_pos = cv2.cvtColor(input_data[rgb_cam][1][:, :, :3], cv2.COLOR_BGR2RGB)
+           # rgb_pos = self.scale_crop(Image.fromarray(rgb_pos), self.config.scale, self.config.img_width_cut, self.config.img_width_cut, self.config.img_resolution[0], self.config.img_resolution[0])
+           # rgb.append(rgb_pos)
+           # rgb = np.concatenate(rgb, axis=1)
+        rgb_list = []  # Use a separate list variable
         for pos in ['left', 'front', 'right']:
-        	rgb_cam = 'rgb_' + pos
-        	rgb_pos = cv2.cvtColor(input_data[rgb_cam][1][:, :, :3], cv2.COLOR_BGR2RGB)
-        	rgb_pos = self.scale_crop(Image.fromarray(rgb_pos), self.config.scale, self.config.img_width_cut, self.config.img_width_cut, self.config.img_resolution[0], self.config.img_resolution[0])
-        	rgb.append(rgb_pos)
-        rgb = np.concatenate(rgb, axis=1)
+            rgb_cam = 'rgb_' + pos
+            rgb_pos = cv2.cvtColor(input_data[rgb_cam][1][:, :, :3], cv2.COLOR_BGR2RGB)
+            rgb_pos = self.scale_crop(
+                Image.fromarray(rgb_pos), 
+                self.config.scale, 
+                self.config.img_width_cut, 
+                self.config.img_width_cut, 
+                self.config.img_resolution[0], 
+                self.config.img_resolution[0]
+        )
+        rgb_list.append(rgb_pos)  # Append image to list
+        rgb = np.concatenate(rgb_list, axis=1)
 
         if(SAVE_PATH != None): #Debug camera for visualizations
             # don't need buffer for it always use the latest one
@@ -416,6 +460,41 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
         self.control = control
 
         self.update_gps_buffer(self.control, tick_data['compass'], tick_data['speed'])
+        if 'rgb_front' in input_data:
+            image_center = input_data['rgb_front'][1][:, :, :3]  # Get RGB image
+            image_center = image_center[:, :, ::-1]  # This line flips the color channels
+            image_surface = pygame.surfarray.make_surface(image_center.swapaxes(0, 1))
+            self._display.blit(image_surface, (0, 0))
+        
+            if 'lidar' in input_data:
+            # Visualize LiDAR points
+                lidar_data = input_data['lidar'][1]
+                lidar_surface = pygame.Surface((self._width//3, self._height//3))
+                lidar_surface.fill((0, 0, 0))
+            
+            # Project LiDAR points to 2D with correct orientation
+                for point in lidar_data:
+                # Fix coordinate system: 
+                # - Negate x to flip left/right
+                # - Use y as forward direction
+                    x, y = point[1], point[0]  # Swap and negate x to match camera view
+                
+                # Scale points to fit visualization (adjust these values to change visualization scale)
+                    scale = 8  # Meters per pixel
+                    screen_x = (x + 10) * (self._width//3) // 20
+                    screen_y = (-y + 10) * (self._height//3) // 20  # Negate y for correct forward/backward
+                
+                    if 0 <= screen_x < self._width//3 and 0 <= screen_y < self._height//3:
+                    # Draw points with intensity-based color
+                        intensity = min(255, max(0, int(point[3] * 255)))  # Use LiDAR intensity if available
+                        pygame.draw.circle(lidar_surface, (intensity, intensity, intensity), 
+                                    (int(screen_x), int(screen_y)), 1)
+            
+            # Show LiDAR visualization in top-right corner
+                self._display.blit(lidar_surface, (self._width - self._width//3, 0))
+        
+            pygame.display.flip()
+
         return control
 
     def bb_detected_in_front_of_vehicle(self, ego_speed):
@@ -624,6 +703,7 @@ class HybridAgent(autonomous_agent.AutonomousAgent):
 
     def destroy(self):
         del self.nets
+        pygame.quit()
 
 # Taken from LBC
 class RoutePlanner(object):

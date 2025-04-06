@@ -176,11 +176,11 @@ class ScenarioManager(object):
             ego_trans = self.ego_vehicles[0].get_transform()
             
             # For third-person view
-            # location = ego_trans.transform(carla.Location(x=-4.5, z=2.3))
-            # spectator.set_transform(carla.Transform(location, carla.Rotation(pitch=-15.0, yaw=ego_trans.rotation.yaw)))
+            location = ego_trans.transform(carla.Location(x=-4.5, z=2.3))
+            spectator.set_transform(carla.Transform(location, carla.Rotation(pitch=-15.0, yaw=ego_trans.rotation.yaw)))
             
             # For bird's eye view
-            spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
+            #spectator.set_transform(carla.Transform(ego_trans.location + carla.Location(z=50), carla.Rotation(pitch=-90)))
 
         if self._running and self.get_running_status():
             CarlaDataProvider.get_world().tick(self._timeout)

@@ -1,5 +1,5 @@
-export CARLA_ROOT=/home/mohammad/Mohammad_ws/autonomous_driving/e2etransfuser/carla
-export WORK_DIR=/home/mohammad/Mohammad_ws/autonomous_driving/e2etransfuser/transfuser_pmlr
+export CARLA_ROOT=/home/ros/e2etransfuser/transfuser_pami/carla
+export WORK_DIR=/home/ros/e2etransfuser/transfuser_pami
 
 export CARLA_SERVER=${CARLA_ROOT}/CarlaUE4.sh
 export PYTHONPATH=$PYTHONPATH:${CARLA_ROOT}/PythonAPI
