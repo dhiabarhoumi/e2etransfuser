@@ -206,3 +206,6 @@ transfuser_pami/carla
 transfuser_pami/team_code_transfuser/cuda_10.2.89_440.33.01_linux.run
 transfuser_pami/model_ckpt/models_2022
 transfuser_pami/log
+/home/ros/e2etransfuser/transfuser_pami/log
+/home/ros/e2etransfuser/transfuser_pami/carla
+/home/ros/e2etransfuser/transfuser_pami/model_ckpt
